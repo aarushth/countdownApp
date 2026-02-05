@@ -1,8 +1,15 @@
 import { StatusBar } from "expo-status-bar";
 import { Suspense } from "react";
-import { StyleSheet, Text, View, ActivityIndicator } from "react-native";
+import {
+    StyleSheet,
+    Text,
+    View,
+    ActivityIndicator,
+    Platform,
+} from "react-native";
 import TimerView from "./components/TimerView";
-import { SQLiteProvider } from "expo-sqlite";
+import { SQLiteProvider, type SQLiteDatabase } from "expo-sqlite";
+import { Asset } from "expo-asset";
 
 export default function App() {
     return (
