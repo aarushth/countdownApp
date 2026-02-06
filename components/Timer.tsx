@@ -1,3 +1,4 @@
+import React from "react";
 import { useEffect, useRef } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import Animated, {
@@ -7,9 +8,8 @@ import Animated, {
 } from "react-native-reanimated";
 
 function OdometerDigit({ digit, max }: { digit: number; max: number }) {
-    const DIGIT_HEIGHT = 150;
+    const DIGIT_HEIGHT = 40;
     const translateY = useSharedValue(0);
-    const prevDigit = useRef(0);
 
     useEffect(() => {
         translateY.value = withTiming(
@@ -32,7 +32,6 @@ function OdometerDigit({ digit, max }: { digit: number; max: number }) {
                     transform: [{ translateY: translateY.value }],
                 }))}
             >
-                {/* Render multiple cycles for smooth wrapping */}
                 {arr.map((num) => (
                     <Text
                         key={num}
@@ -72,15 +71,15 @@ export default function Timer({ time }: { time: number }) {
             {daysDigits.map((digit, index) => (
                 <OdometerDigit key={index} digit={digit} max={10} />
             ))}
-            <Text>Days</Text>
+            <Text className={textStyle}>Days</Text>
             {hoursDigits.map((digit, index) => (
                 <OdometerDigit
                     key={index}
                     digit={digit}
-                    max={index == 0 ? 3 : hoursDigits[0] == 2 ? 4 : 10}
+                    max={index == 0 ? 3 : hours < 5 ? 4 : 10}
                 />
             ))}
-            <Text>Hours</Text>
+            <Text className={textStyle}>Hours</Text>
             {minutesDigits.map((digit, index) => (
                 <OdometerDigit
                     key={index}
@@ -88,7 +87,7 @@ export default function Timer({ time }: { time: number }) {
                     max={index == 0 ? 6 : 10}
                 />
             ))}
-            <Text>Minutes</Text>
+            <Text className={textStyle}>Minutes</Text>
             {secondsDigits.map((digit, index) => (
                 <OdometerDigit
                     key={index}
@@ -96,11 +95,11 @@ export default function Timer({ time }: { time: number }) {
                     max={index == 0 ? 6 : 10}
                 />
             ))}
-            <Text>Seconds</Text>
+            <Text className={textStyle}>Seconds</Text>
         </View>
     );
 }
-
+const textStyle = "text-xs";
 const styles = StyleSheet.create({
     container: {
         flexDirection: "row",

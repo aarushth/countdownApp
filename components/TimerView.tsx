@@ -1,18 +1,15 @@
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useRef, useState } from "react";
-import { Text } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import Timer from "./Timer";
+import React from "react";
+import StaticTimer from "./StaticTimer";
 
-interface Period {
-    id: number;
-    name: string;
-    startTime: Date;
-    endTime: Date;
-}
 export default function TimerView() {
     const db = useSQLiteContext();
     const [staticTime, setStaticTime] = useState<number[]>([]);
-    const [rollingTime, setRollingTime] = useState<number[]>([]);
+    const [rollingTime, setRollingTime] = useState<number>(0);
+    const [rollingIndex, setRollingIndex] = useState<number>(0);
     const [resetTime, setResetTime] = useState<number>(Number.MAX_SAFE_INTEGER);
 
     const rollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -25,31 +22,11 @@ export default function TimerView() {
         const staticStatement = await db.prepareAsync(
             "SELECT SUM(strftime('%s', endTime) - strftime('%s', startTime)) AS time FROM schedule WHERE name = $name AND startTime > DATETIME('now')",
         );
-        let tempStaticTime: number[] = [];
-        let tempRollingTime: number[] = [];
-        for (let period = 1; period <= 6; period++) {
-            const name = `Period ${period}`;
-            const staticResult = await staticStatement.executeAsync({
-                $name: name,
-            });
-            const staticRow = await staticResult.getFirstAsync();
-            tempStaticTime.concat((staticRow as TotalTimeRow).time!);
-
-            const rollingStatement = await db.prepareAsync(
-                "SELECT (strftime('%s', endTime) - strftime('%s', DATETIME('now'))) AS time FROM schedule WHERE name = $name AND startTime < DATETIME('now') AND endTime > DATETIME('now')",
-            );
-
-            const rollingResult = await rollingStatement.executeAsync({
-                $name: `Period ${period}`,
-            });
-            const rollingRow = await rollingResult.getFirstAsync();
-
-            tempRollingTime.concat(
-                (rollingRow as TotalTimeRow | null)?.time ?? 0,
-            );
-
-            const resetStatement = await db.prepareAsync(
-                `WITH active AS (
+        const rollingStatement = await db.prepareAsync(
+            "SELECT (strftime('%s', endTime) - strftime('%s', DATETIME('now'))) AS time FROM schedule WHERE name = $name AND startTime < DATETIME('now') AND endTime > DATETIME('now')",
+        );
+        const resetStatement = await db.prepareAsync(
+            `WITH active AS (
                     SELECT endTime AS time
                     FROM schedule
                     WHERE name = $name
@@ -74,22 +51,70 @@ export default function TimerView() {
                 WHERE NOT EXISTS (SELECT 1 FROM active)
                 LIMIT 1;
                 `,
-            );
-            const resetResult = await resetStatement.executeAsync({
-                $name: `Period ${period}`,
-            });
-            const resetRow = await resetResult.getFirstAsync();
+        );
+        let tempStaticTime: number[] = [];
 
-            if (resetRow && (resetRow as TotalTimeRow).time! < resetTime) {
-                setResetTime((resetRow as TotalTimeRow).time!);
+        try {
+            for (let period = 1; period <= 6; period++) {
+                const name = `Period ${period}`;
+                const staticResult = await staticStatement.executeAsync({
+                    $name: name,
+                });
+                const staticRow = await staticResult.getFirstAsync();
+
+                tempStaticTime.push((staticRow as TotalTimeRow).time!);
+                const rollingResult = await rollingStatement.executeAsync({
+                    $name: `Period ${period}`,
+                });
+                const rollingRow = await rollingResult.getFirstAsync();
+                const tempRollingTime =
+                    (rollingRow as TotalTimeRow | null)?.time ?? 0;
+                if (tempRollingTime != 0) {
+                    setRollingTime(tempRollingTime);
+                    setRollingIndex(period);
+                }
+
+                const resetResult = await resetStatement.executeAsync({
+                    $name: `Period ${period}`,
+                });
+                const resetRow = await resetResult.getFirstAsync();
+                const tempResetTime = new Date(
+                    `${(resetRow as TotalTimeRow).time}Z`,
+                );
+
+                if (tempResetTime.getTime() / 1000 < resetTime) {
+                    console.log(tempResetTime.toString());
+                    setResetTime(tempResetTime.getTime() / 1000);
+                }
             }
+            setStaticTime(tempStaticTime);
+        } finally {
+            // Always finalize prepared statements to prevent issues on reload
+            await staticStatement.finalizeAsync();
+            await rollingStatement.finalizeAsync();
+            await resetStatement.finalizeAsync();
         }
-        setStaticTime(tempStaticTime);
-        setRollingTime(tempRollingTime);
     };
 
     useEffect(() => {
         initDb();
+    }, [db]);
+
+    // Resync when page regains focus
+    useEffect(() => {
+        const handleFocus = () => {
+            initDb();
+        };
+
+        if (typeof window !== "undefined") {
+            window.addEventListener("focus", handleFocus);
+        }
+
+        return () => {
+            if (typeof window !== "undefined") {
+                window.removeEventListener("focus", handleFocus);
+            }
+        };
     }, [db]);
 
     useEffect(() => {
@@ -116,7 +141,7 @@ export default function TimerView() {
 
         resetIntervalRef.current = setInterval(() => {
             const now = new Date();
-            if (resetTime.getTime() < now.getTime()) {
+            if (resetTime < now.getTime() * 1000) {
                 initDb();
             }
         }, 1000);
@@ -128,11 +153,29 @@ export default function TimerView() {
     }, [resetTime]);
 
     return (
-        staticTime != null && (
-            <>
-                <Timer time={rollingTime + staticTime}></Timer>
-                <Text>{resetTime ? resetTime.toString() : "nodate"}</Text>
-            </>
-        )
+        <ScrollView>
+            {staticTime.map((time, index) => {
+                if (index + 1 == rollingIndex) {
+                    return (
+                        <View key={index} className="my-5">
+                            <Timer time={rollingTime + time} />
+                            <Text>Left in Period {index + 1}</Text>
+                        </View>
+                    );
+                } else {
+                    return (
+                        <View key={index} className="my-5">
+                            <StaticTimer time={time} />
+                            <Text>Left in Period {index + 1}</Text>
+                        </View>
+                    );
+                }
+            })}
+
+            {/* <View className="my-5">
+                <Timer time={} />
+                <Text>Left in 24hr test</Text>
+            </View> */}
+        </ScrollView>
     );
 }
