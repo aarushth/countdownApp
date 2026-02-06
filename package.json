@@ -2,6 +2,7 @@
     "name": "countdown",
     "version": "1.0.0",
     "main": "index.ts",
+    "homepage": "https://aarushth.github.io/countdownApp",
     "scripts": {
         "start": "expo start",
         "android": "expo run:android",
