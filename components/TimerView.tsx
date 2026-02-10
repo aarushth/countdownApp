@@ -4,6 +4,7 @@ import { ScrollView, Text, View } from "react-native";
 import Timer from "./Timer";
 import React from "react";
 import StaticTimer from "./StaticTimer";
+import LunchToggle from "./LunchToggle";
 
 export default function TimerView() {
     const db = useSQLiteContext();
@@ -11,27 +12,41 @@ export default function TimerView() {
     const [rollingTime, setRollingTime] = useState<number>(0);
     const [rollingIndex, setRollingIndex] = useState<number>(0);
     const [resetTime, setResetTime] = useState<number>(Number.MAX_SAFE_INTEGER);
+    const [thirdLunch, setThirdLunch] = useState<boolean>(false);
+    const [fourthLunch, setFourthLunch] = useState<boolean>(true);
 
-    const rollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const resetIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const rollingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(
+        null,
+    );
+    const resetIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const initDb = async () => {
         type TotalTimeRow = {
             time: number | null;
         };
         const staticStatement = await db.prepareAsync(
-            "SELECT SUM(strftime('%s', endTime) - strftime('%s', startTime)) AS time FROM schedule WHERE name = $name AND startTime > DATETIME('now')",
+            `SELECT SUM(strftime('%s', endTime) - strftime('%s', startTime)) AS time 
+                FROM schedule
+                WHERE name = $name
+                AND (lunch = $lunch OR lunch = 2)
+                AND DATETIME(startTime) > DATETIME('now')`,
         );
         const rollingStatement = await db.prepareAsync(
-            "SELECT (strftime('%s', endTime) - strftime('%s', DATETIME('now'))) AS time FROM schedule WHERE name = $name AND startTime < DATETIME('now') AND endTime > DATETIME('now')",
+            `SELECT (strftime('%s', endTime) - strftime('%s', DATETIME('now'))) AS time 
+                FROM schedule 
+                WHERE name = $name
+                AND (lunch = $lunch OR lunch = 2)
+                AND DATETIME(startTime) < DATETIME('now') 
+                AND DATETIME(endTime) > DATETIME('now');`,
         );
         const resetStatement = await db.prepareAsync(
             `WITH active AS (
                     SELECT endTime AS time
                     FROM schedule
                     WHERE name = $name
-                    AND startTime <= DATETIME('now')
-                    AND endTime > DATETIME('now')
+                    AND DATETIME(startTime) <= DATETIME('now')
+                    AND DATETIME(endTime) > DATETIME('now')
+                    AND (lunch = $lunch OR lunch = 2)
                     ORDER BY endTime
                     LIMIT 1
                 ),
@@ -39,7 +54,8 @@ export default function TimerView() {
                     SELECT startTime AS time
                     FROM schedule
                     WHERE name = $name
-                    AND startTime > DATETIME('now')
+                    AND DATETIME(startTime) > DATETIME('now')
+                    AND (lunch = $lunch OR lunch = 2)
                     ORDER BY startTime
                     LIMIT 1
                 )
@@ -53,29 +69,41 @@ export default function TimerView() {
                 `,
         );
         let tempStaticTime: number[] = [];
-
+        let rollingTimeBuffer: number = 0;
         try {
             for (let period = 1; period <= 6; period++) {
                 const name = `Period ${period}`;
+                let lunch = null;
+                if (period == 3) {
+                    lunch = thirdLunch ? 0 : 1;
+                } else if (period == 4) {
+                    lunch = fourthLunch ? 0 : 1;
+                } else {
+                    lunch = 2;
+                }
+
                 const staticResult = await staticStatement.executeAsync({
                     $name: name,
+                    $lunch: lunch,
                 });
                 const staticRow = await staticResult.getFirstAsync();
-
                 tempStaticTime.push((staticRow as TotalTimeRow).time!);
+
                 const rollingResult = await rollingStatement.executeAsync({
-                    $name: `Period ${period}`,
+                    $name: name,
+                    $lunch: lunch,
                 });
                 const rollingRow = await rollingResult.getFirstAsync();
                 const tempRollingTime =
                     (rollingRow as TotalTimeRow | null)?.time ?? 0;
                 if (tempRollingTime != 0) {
-                    setRollingTime(tempRollingTime);
+                    rollingTimeBuffer = tempRollingTime;
                     setRollingIndex(period);
                 }
 
                 const resetResult = await resetStatement.executeAsync({
-                    $name: `Period ${period}`,
+                    $name: name,
+                    $lunch: lunch,
                 });
                 const resetRow = await resetResult.getFirstAsync();
                 const tempResetTime = new Date(
@@ -83,22 +111,22 @@ export default function TimerView() {
                 );
 
                 if (tempResetTime.getTime() / 1000 < resetTime) {
-                    console.log(tempResetTime.toString());
                     setResetTime(tempResetTime.getTime() / 1000);
                 }
             }
+            setRollingTime(rollingTimeBuffer);
             setStaticTime(tempStaticTime);
         } finally {
-            // Always finalize prepared statements to prevent issues on reload
             await staticStatement.finalizeAsync();
             await rollingStatement.finalizeAsync();
             await resetStatement.finalizeAsync();
         }
     };
 
+    //onStart or when lunches change
     useEffect(() => {
         initDb();
-    }, [db]);
+    }, [db, thirdLunch, fourthLunch]);
 
     // Resync when page regains focus
     useEffect(() => {
@@ -117,6 +145,7 @@ export default function TimerView() {
         };
     }, [db]);
 
+    //rolling Time Loop
     useEffect(() => {
         if (rollingTime <= 0) return;
 
@@ -153,29 +182,51 @@ export default function TimerView() {
     }, [resetTime]);
 
     return (
-        <ScrollView>
-            {staticTime.map((time, index) => {
-                if (index + 1 == rollingIndex) {
-                    return (
-                        <View key={index} className="my-5">
-                            <Timer time={rollingTime + time} />
-                            <Text>Left in Period {index + 1}</Text>
-                        </View>
-                    );
-                } else {
-                    return (
-                        <View key={index} className="my-5">
-                            <StaticTimer time={time} />
-                            <Text>Left in Period {index + 1}</Text>
-                        </View>
-                    );
-                }
-            })}
+        <View className="flex flex-row align-center gap-10">
+            <ScrollView>
+                {staticTime.map((time, index) => {
+                    if (index + 1 == rollingIndex) {
+                        return (
+                            <View key={index} className="my-5">
+                                <Timer time={rollingTime + time} />
+                                <Text>Left in Period {index + 1}</Text>
+                            </View>
+                        );
+                    } else {
+                        return (
+                            <View key={index} className="my-5">
+                                <StaticTimer time={time} />
+                                <Text>Left in Period {index + 1}</Text>
+                            </View>
+                        );
+                    }
+                })}
+            </ScrollView>
 
-            {/* <View className="my-5">
-                <Timer time={} />
-                <Text>Left in 24hr test</Text>
-            </View> */}
-        </ScrollView>
+            <View className="my-5 flex-1 justify-center items-center">
+                <View className="flex gap-4 mb-10">
+                    <LunchToggle
+                        lunch={thirdLunch}
+                        lunchToggle={() => {
+                            setThirdLunch(!thirdLunch);
+                        }}
+                        period={3}
+                    />
+                    <LunchToggle
+                        lunch={fourthLunch}
+                        lunchToggle={() => {
+                            setFourthLunch(!fourthLunch);
+                        }}
+                        period={4}
+                    />
+                </View>
+                {rollingTime != 0 && (
+                    <>
+                        <Timer time={rollingTime} />
+                        <Text>Left in Current Period</Text>
+                    </>
+                )}
+            </View>
+        </View>
     );
 }

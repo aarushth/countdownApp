@@ -65,6 +65,7 @@ export default function Timer({ time }: { time: number }) {
     const hoursDigits = toDigits(hours);
     const minutesDigits = toDigits(minutes);
     const secondsDigits = toDigits(seconds);
+    // console.log(time);
 
     return (
         <View style={styles.container}>
@@ -76,7 +77,7 @@ export default function Timer({ time }: { time: number }) {
                 <OdometerDigit
                     key={index}
                     digit={digit}
-                    max={index == 0 ? 3 : hours < 5 ? 4 : 10}
+                    max={index == 0 ? 3 : hours == 0 || hours >= 23 ? 4 : 10}
                 />
             ))}
             <Text className={textStyle}>Hours</Text>
