@@ -75,9 +75,9 @@ export default function TimerView() {
                 const name = `Period ${period}`;
                 let lunch = null;
                 if (period == 3) {
-                    lunch = thirdLunch ? 0 : 1;
+                    lunch = thirdLunch ? 1 : 0;
                 } else if (period == 4) {
-                    lunch = fourthLunch ? 0 : 1;
+                    lunch = fourthLunch ? 1 : 0;
                 } else {
                     lunch = 2;
                 }
