@@ -11,14 +11,11 @@ export default function TimerView() {
     const [staticTime, setStaticTime] = useState<number[]>([]);
     const [rollingTime, setRollingTime] = useState<number>(0);
     const [rollingIndex, setRollingIndex] = useState<number>(0);
-    const [resetTime, setResetTime] = useState<number>(Number.MAX_SAFE_INTEGER);
+
     const [thirdLunch, setThirdLunch] = useState<boolean>(false);
     const [fourthLunch, setFourthLunch] = useState<boolean>(true);
 
-    const rollingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(
-        null,
-    );
-    const resetIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const initDb = async () => {
         type TotalTimeRow = {
@@ -40,36 +37,17 @@ export default function TimerView() {
                 AND DATETIME(endTime) > DATETIME('now');`,
         );
         const resetStatement = await db.prepareAsync(
-            `WITH active AS (
-                    SELECT endTime AS time
-                    FROM schedule
-                    WHERE name = $name
-                    AND DATETIME(startTime) <= DATETIME('now')
-                    AND DATETIME(endTime) > DATETIME('now')
-                    AND (lunch = $lunch OR lunch = 2)
-                    ORDER BY endTime
-                    LIMIT 1
-                ),
-                upcoming AS (
-                    SELECT startTime AS time
-                    FROM schedule
-                    WHERE name = $name
-                    AND DATETIME(startTime) > DATETIME('now')
-                    AND (lunch = $lunch OR lunch = 2)
-                    ORDER BY startTime
-                    LIMIT 1
-                )
-                SELECT time
-                FROM active
-                UNION ALL
-                SELECT time
-                FROM upcoming
-                WHERE NOT EXISTS (SELECT 1 FROM active)
-                LIMIT 1;
-                `,
+            `SELECT (strftime('%s', startTime) - strftime('%s', DATETIME('now'))) AS time
+                FROM schedule
+                WHERE name = $name
+                AND DATETIME(startTime) > DATETIME('now')
+                AND (lunch = $lunch OR lunch = 2)
+                ORDER BY startTime
+                LIMIT 1;`,
         );
         let tempStaticTime: number[] = [];
         let rollingTimeBuffer: number = 0;
+        let resetTimeBuffer: number = Number.MAX_SAFE_INTEGER;
         try {
             for (let period = 1; period <= 6; period++) {
                 const name = `Period ${period}`;
@@ -106,15 +84,19 @@ export default function TimerView() {
                     $lunch: lunch,
                 });
                 const resetRow = await resetResult.getFirstAsync();
-                const tempResetTime = new Date(
-                    `${(resetRow as TotalTimeRow).time}Z`,
-                );
+                const tempResetTime =
+                    (resetRow as TotalTimeRow | null)?.time ?? 0;
 
-                if (tempResetTime.getTime() / 1000 < resetTime) {
-                    setResetTime(tempResetTime.getTime() / 1000);
+                if (tempResetTime != 0 && tempResetTime < resetTimeBuffer) {
+                    resetTimeBuffer = tempResetTime;
                 }
             }
-            setRollingTime(rollingTimeBuffer);
+            if (rollingTimeBuffer != 0) {
+                setRollingTime(rollingTimeBuffer);
+            } else {
+                setRollingTime(resetTimeBuffer);
+                setRollingIndex(0);
+            }
             setStaticTime(tempStaticTime);
         } finally {
             await staticStatement.finalizeAsync();
@@ -147,39 +129,21 @@ export default function TimerView() {
 
     //rolling Time Loop
     useEffect(() => {
-        if (rollingTime <= 0) return;
+        if (rollingTime <= 0) {
+            initDb();
+            return;
+        }
 
-        if (rollingIntervalRef.current)
-            clearInterval(rollingIntervalRef.current);
+        if (intervalRef.current) clearInterval(intervalRef.current);
 
-        rollingIntervalRef.current = setInterval(() => {
+        intervalRef.current = setInterval(() => {
             setRollingTime((prev) => prev - 1);
         }, 1000);
 
         return () => {
-            if (rollingIntervalRef.current)
-                clearInterval(rollingIntervalRef.current);
+            if (intervalRef.current) clearInterval(intervalRef.current);
         };
     }, [rollingTime > 0]);
-
-    // Reset watcher loop
-    useEffect(() => {
-        if (!resetTime) return;
-
-        if (resetIntervalRef.current) clearInterval(resetIntervalRef.current);
-
-        resetIntervalRef.current = setInterval(() => {
-            const now = new Date();
-            if (resetTime < now.getTime() * 1000) {
-                initDb();
-            }
-        }, 1000);
-
-        return () => {
-            if (resetIntervalRef.current)
-                clearInterval(resetIntervalRef.current);
-        };
-    }, [resetTime]);
 
     return (
         <View className="flex flex-row align-center gap-10">
@@ -223,7 +187,11 @@ export default function TimerView() {
                 {rollingTime != 0 && (
                     <>
                         <Timer time={rollingTime} />
-                        <Text>Left in Current Period</Text>
+                        <Text>
+                            {rollingIndex == 0
+                                ? "Until next period"
+                                : "Left in Current Period"}
+                        </Text>
                     </>
                 )}
             </View>
