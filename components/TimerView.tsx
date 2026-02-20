@@ -169,7 +169,6 @@ export default function TimerView() {
                     })}
                 </View>
 
-                {/* WRAPPER FOR 2 + 3 */}
                 <View className="order-1 md:order-2 flex flex-col gap-4">
                     {rollingTime != 0 && (
                         <View className="border shrink p-5 rounded-xl">

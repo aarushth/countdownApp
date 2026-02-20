@@ -8,7 +8,7 @@ interface Props {
 }
 export default function LunchToggle({ lunch, lunchToggle, period }: Props) {
     return (
-        <View className="flex flex-row justify-between">
+        <View className="flex flex-row justify-between px-5">
             <Text className="text-nowrap my-auto">Period {period} Lunch:</Text>
             <View className="flex flex-row gap-4">
                 <Button
