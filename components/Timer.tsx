@@ -65,7 +65,6 @@ export default function Timer({ time }: { time: number }) {
     const hoursDigits = toDigits(hours);
     const minutesDigits = toDigits(minutes);
     const secondsDigits = toDigits(seconds);
-    // console.log(time);
 
     return (
         <View style={styles.container}>

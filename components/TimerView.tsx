@@ -146,55 +146,56 @@ export default function TimerView() {
     }, [rollingTime > 0]);
 
     return (
-        <View className="flex flex-row align-center gap-10">
-            <ScrollView>
-                {staticTime.map((time, index) => {
-                    if (index + 1 == rollingIndex) {
-                        return (
-                            <View key={index} className="my-5">
-                                <Timer time={rollingTime + time} />
-                                <Text>Left in Period {index + 1}</Text>
-                            </View>
-                        );
-                    } else {
-                        return (
-                            <View key={index} className="my-5">
-                                <StaticTimer time={time} />
-                                <Text>Left in Period {index + 1}</Text>
-                            </View>
-                        );
-                    }
-                })}
-            </ScrollView>
-
-            <View className="my-5 flex-1 justify-center items-center">
-                <View className="flex gap-4 mb-10">
-                    <LunchToggle
-                        lunch={thirdLunch}
-                        lunchToggle={() => {
-                            setThirdLunch(!thirdLunch);
-                        }}
-                        period={3}
-                    />
-                    <LunchToggle
-                        lunch={fourthLunch}
-                        lunchToggle={() => {
-                            setFourthLunch(!fourthLunch);
-                        }}
-                        period={4}
-                    />
+        <ScrollView showsVerticalScrollIndicator={false}>
+            <View className="flex flex-col md:flex-row justify-center items-center py-3">
+                {/* FIRST DIV */}
+                <View className="order-2 md:order-1">
+                    {staticTime.map((time, index) => {
+                        if (index + 1 == rollingIndex) {
+                            return (
+                                <View key={index} className="p-5">
+                                    <Timer time={rollingTime + time} />
+                                    <Text>Left in Period {index + 1}</Text>
+                                </View>
+                            );
+                        } else {
+                            return (
+                                <View key={index} className="p-5">
+                                    <StaticTimer time={time} />
+                                    <Text>Left in Period {index + 1}</Text>
+                                </View>
+                            );
+                        }
+                    })}
                 </View>
-                {rollingTime != 0 && (
-                    <>
-                        <Timer time={rollingTime} />
-                        <Text>
-                            {rollingIndex == 0
-                                ? "Until next period"
-                                : "Left in Current Period"}
-                        </Text>
-                    </>
-                )}
+
+                {/* WRAPPER FOR 2 + 3 */}
+                <View className="order-1 md:order-2 flex flex-col gap-4">
+                    {rollingTime != 0 && (
+                        <View className="border shrink p-5 rounded-xl">
+                            <Timer time={rollingTime} />
+                            <Text className="whitespace-nowrap overflow-hidden">
+                                {rollingIndex == 0
+                                    ? "Until next period"
+                                    : "Left in Current Period"}
+                            </Text>
+                        </View>
+                    )}
+
+                    <View className="flex gap-4">
+                        <LunchToggle
+                            lunch={thirdLunch}
+                            lunchToggle={() => setThirdLunch(!thirdLunch)}
+                            period={3}
+                        />
+                        <LunchToggle
+                            lunch={fourthLunch}
+                            lunchToggle={() => setFourthLunch(!fourthLunch)}
+                            period={4}
+                        />
+                    </View>
+                </View>
             </View>
-        </View>
+        </ScrollView>
     );
 }
