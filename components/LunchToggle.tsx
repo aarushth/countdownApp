@@ -10,7 +10,7 @@ export default function LunchToggle({ lunch, lunchToggle, period }: Props) {
     return (
         <View className="flex flex-row justify-between">
             <Text className="text-nowrap my-auto">Period {period} Lunch:</Text>
-            <View className="flex flex-row">
+            <View className="flex flex-row gap-4">
                 <Button
                     onPress={lunchToggle}
                     clickDisabled={lunch}
