@@ -1,10 +1,12 @@
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, useWindowDimensions, View } from "react-native";
 import Timer from "./Timer";
 import React from "react";
 import StaticTimer from "./StaticTimer";
 import LunchToggle from "./LunchToggle";
+import { LargeText } from "./MyAppText";
+import { styles } from "./styles";
 
 export default function TimerView() {
     const db = useSQLiteContext();
@@ -16,6 +18,8 @@ export default function TimerView() {
     const [fourthLunch, setFourthLunch] = useState<boolean>(true);
 
     const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const { width } = useWindowDimensions();
+    const isMd = width >= 768;
 
     const initDb = async () => {
         type TotalTimeRow = {
@@ -147,41 +151,63 @@ export default function TimerView() {
 
     return (
         <ScrollView showsVerticalScrollIndicator={false}>
-            <View className="flex flex-col md:flex-row justify-center items-center py-3">
-                {/* FIRST DIV */}
-                <View className="order-2 md:order-1">
+            <View
+                style={[
+                    styles.timerContainer,
+                    {
+                        flexDirection: isMd ? "row" : "column-reverse",
+                    },
+                ]}
+            >
+                <View>
                     {staticTime.map((time, index) => {
                         if (index + 1 == rollingIndex) {
                             return (
-                                <View key={index} className="p-5">
+                                <View
+                                    key={index}
+                                    style={styles.periodTimerContainter}
+                                >
                                     <Timer time={rollingTime + time} />
-                                    <Text>Left in Period {index + 1}</Text>
+                                    <LargeText>
+                                        Left in Period {index + 1}
+                                    </LargeText>
                                 </View>
                             );
                         } else {
                             return (
-                                <View key={index} className="p-5">
+                                <View
+                                    key={index}
+                                    style={styles.periodTimerContainter}
+                                >
                                     <StaticTimer time={time} />
-                                    <Text>Left in Period {index + 1}</Text>
+                                    <LargeText>
+                                        Left in Period {index + 1}
+                                    </LargeText>
                                 </View>
                             );
                         }
                     })}
                 </View>
-
-                <View className="order-1 md:order-2 flex flex-col gap-4">
+                <View style={{ flexDirection: "column", gap: 8 }}>
                     {rollingTime != 0 && (
-                        <View className="border shrink p-5 rounded-xl">
+                        <View style={styles.currentTimerContainer}>
                             <Timer time={rollingTime} />
-                            <Text className="whitespace-nowrap overflow-hidden">
+                            <LargeText>
                                 {rollingIndex == 0
                                     ? "Until next period"
                                     : "Left in Current Period"}
-                            </Text>
+                            </LargeText>
                         </View>
                     )}
 
-                    <View className="flex gap-4">
+                    <View
+                        style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 16,
+                            marginTop: 8,
+                        }}
+                    >
                         <LunchToggle
                             lunch={thirdLunch}
                             lunchToggle={() => setThirdLunch(!thirdLunch)}

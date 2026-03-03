@@ -1,24 +1,30 @@
 import React from "react";
 import { Pressable, Text } from "react-native";
+import { styles } from "./styles";
 
 interface Props {
     onPress: () => void;
-    clickDisabled: boolean;
-    lookDisabled: boolean;
-    content: string;
+    clickDisabled?: boolean;
+    lookDisabled?: boolean;
+    title: string;
 }
 export default function MyButton({
     onPress,
-    clickDisabled,
+    clickDisabled = false,
     lookDisabled = clickDisabled,
-    content,
+    title,
 }: Props) {
     return (
         <Pressable onPress={onPress} disabled={clickDisabled}>
             <Text
-                className={`${lookDisabled ? "bg-slate-400" : "bg-blue-500"} py-2 px-5 rounded-lg text-white text-bold text-xl`}
+                style={[
+                    styles.buttonText,
+                    {
+                        backgroundColor: `${lookDisabled ? "rgba(148,163,184,0.6)" : "#d185ed"}`,
+                    },
+                ]}
             >
-                {content}
+                {title}
             </Text>
         </Pressable>
     );

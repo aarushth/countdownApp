@@ -1,6 +1,7 @@
 import React from "react";
-import { View, Text, Pressable } from "react-native";
+import { View } from "react-native";
 import Button from "./Button";
+import { LargeText } from "./MyAppText";
 interface Props {
     lunch: boolean;
     lunchToggle: () => void;
@@ -8,20 +9,31 @@ interface Props {
 }
 export default function LunchToggle({ lunch, lunchToggle, period }: Props) {
     return (
-        <View className="flex flex-row justify-between px-5">
-            <Text className="text-nowrap my-auto">Period {period} Lunch:</Text>
-            <View className="flex flex-row gap-4">
+        <View
+            style={{
+                flexDirection: "row",
+                paddingHorizontal: 10,
+                justifyContent: "space-between",
+            }}
+        >
+            <LargeText>Period {period} Lunch:</LargeText>
+            <View
+                style={{
+                    flexDirection: "row",
+                    gap: 8,
+                }}
+            >
                 <Button
                     onPress={lunchToggle}
                     clickDisabled={lunch}
                     lookDisabled={!lunch}
-                    content={"A"}
+                    title={"A"}
                 ></Button>
                 <Button
                     onPress={lunchToggle}
                     clickDisabled={!lunch}
                     lookDisabled={lunch}
-                    content={"B"}
+                    title={"B"}
                 ></Button>
             </View>
         </View>

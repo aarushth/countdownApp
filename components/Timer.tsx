@@ -1,14 +1,15 @@
 import React from "react";
 import { useEffect } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text } from "react-native";
+import { styles, DIGIT_HEIGHT } from "./styles";
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
     withTiming,
 } from "react-native-reanimated";
+import { SmallText } from "./MyAppText";
 
 function OdometerDigit({ digit, max }: { digit: number; max: number }) {
-    const DIGIT_HEIGHT = 40;
     const translateY = useSharedValue(0);
 
     useEffect(() => {
@@ -26,24 +27,14 @@ function OdometerDigit({ digit, max }: { digit: number; max: number }) {
     }, [digit]);
     const arr = Array.from({ length: max + 1 }, (_, i) => i);
     return (
-        <View style={[styles.digitContainer, { height: DIGIT_HEIGHT }]}>
+        <View style={styles.digitContainer}>
             <Animated.View
                 style={useAnimatedStyle(() => ({
                     transform: [{ translateY: translateY.value }],
                 }))}
             >
                 {arr.map((num) => (
-                    <Text
-                        key={num}
-                        style={[
-                            styles.digitText,
-                            {
-                                height: DIGIT_HEIGHT,
-                                fontSize: DIGIT_HEIGHT - 4,
-                                lineHeight: DIGIT_HEIGHT,
-                            },
-                        ]}
-                    >
+                    <Text key={num} style={styles.digitText}>
                         {num % max}
                     </Text>
                 ))}
@@ -67,11 +58,11 @@ export default function Timer({ time }: { time: number }) {
     const secondsDigits = toDigits(seconds);
 
     return (
-        <View style={styles.container}>
+        <View style={styles.rowContainer}>
             {daysDigits.map((digit, index) => (
                 <OdometerDigit key={index} digit={digit} max={10} />
             ))}
-            <Text className={textStyle}>Days</Text>
+            <SmallText>Days</SmallText>
             {hoursDigits.map((digit, index) => (
                 <OdometerDigit
                     key={index}
@@ -79,7 +70,7 @@ export default function Timer({ time }: { time: number }) {
                     max={index == 0 ? 3 : hours == 0 || hours >= 23 ? 4 : 10}
                 />
             ))}
-            <Text className={textStyle}>Hours</Text>
+            <SmallText>Hours</SmallText>
             {minutesDigits.map((digit, index) => (
                 <OdometerDigit
                     key={index}
@@ -87,7 +78,7 @@ export default function Timer({ time }: { time: number }) {
                     max={index == 0 ? 6 : 10}
                 />
             ))}
-            <Text className={textStyle}>Minutes</Text>
+            <SmallText>Minutes</SmallText>
             {secondsDigits.map((digit, index) => (
                 <OdometerDigit
                     key={index}
@@ -95,23 +86,7 @@ export default function Timer({ time }: { time: number }) {
                     max={index == 0 ? 6 : 10}
                 />
             ))}
-            <Text className={textStyle}>Seconds</Text>
+            <SmallText>Seconds</SmallText>
         </View>
     );
 }
-const textStyle = "text-xs";
-const styles = StyleSheet.create({
-    container: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    digitContainer: {
-        overflow: "hidden",
-    },
-    digitText: {
-        fontWeight: "700",
-        fontFamily: "sans-serif",
-        color: "#0b2369",
-        textAlign: "center",
-    },
-});
