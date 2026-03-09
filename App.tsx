@@ -1,15 +1,17 @@
 import { StatusBar } from "expo-status-bar";
 import React, { Suspense, useEffect, useState } from "react";
-import {
-    StyleSheet,
-    View,
-    ActivityIndicator,
-    Platform,
-    Text,
-} from "react-native";
+import { StyleSheet, View, ActivityIndicator, Platform } from "react-native";
 import TimerView from "./components/TimerView";
-import { SQLiteProvider, type SQLiteDatabase } from "expo-sqlite";
+import {
+    SQLiteProvider,
+    deleteDatabaseAsync,
+    type SQLiteDatabase,
+} from "expo-sqlite";
 import { LargeText } from "./components/MyAppText";
+
+const DB_NAME = "schedule_lunch.db";
+// Bump this number whenever you update assets/schedule.db
+const DB_ASSET_VERSION = 1;
 
 async function initializeDatabase(db: SQLiteDatabase) {
     const result = await db.getFirstAsync<{ count: number }>(
@@ -18,6 +20,40 @@ async function initializeDatabase(db: SQLiteDatabase) {
     if (!result || result.count === 0) {
         throw new Error("Database is empty - needs refresh from asset");
     }
+}
+
+/**
+ * Checks whether the cached DB matches the current asset version.
+ * If not, deletes the cached copy so SQLiteProvider re-copies from the asset.
+ */
+function useDbAssetVersion() {
+    const [ready, setReady] = useState(false);
+
+    useEffect(() => {
+        const versionKey = `db_asset_version_${DB_NAME}`;
+        async function check() {
+            const stored =
+                Platform.OS === "web" ? localStorage.getItem(versionKey) : null;
+
+            if (stored !== String(DB_ASSET_VERSION)) {
+                try {
+                    await deleteDatabaseAsync(DB_NAME);
+                } catch {
+                    // DB may not exist yet on first launch — that's fine
+                }
+                if (Platform.OS === "web") {
+                    localStorage.setItem(versionKey, String(DB_ASSET_VERSION));
+                }
+            }
+            setReady(true);
+        }
+        check();
+    }, []);
+
+    // On native, skip the async check — asset overwrite issues are
+    // mainly a web/OPFS problem. Extend with expo-file-system if needed.
+    if (Platform.OS !== "web") return true;
+    return ready;
 }
 
 /**
@@ -81,10 +117,11 @@ function useWebDbLock() {
 
 export default function App() {
     const lockState = useWebDbLock();
+    const dbReady = useDbAssetVersion();
 
     // On native, lockState is "unsupported" (skip lock logic).
     // On web, wait until we hold the exclusive lock.
-    if (lockState === "waiting") {
+    if (lockState === "waiting" || !dbReady) {
         return (
             <View style={styles.container}>
                 <LargeText>Waiting for other tab to close...</LargeText>
@@ -96,8 +133,8 @@ export default function App() {
     return (
         <Suspense fallback={<ActivityIndicator size="large" />}>
             <SQLiteProvider
-                databaseName="schedule.db"
-                assetSource={{ assetId: require("./assets/schedule_lunch.db") }}
+                databaseName={DB_NAME}
+                assetSource={{ assetId: require("./assets/schedule.db") }}
                 onInit={initializeDatabase}
             >
                 <View style={styles.container}>
