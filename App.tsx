@@ -11,7 +11,7 @@ import { LargeText } from "./components/MyAppText";
 
 const DB_NAME = "schedule_lunch.db";
 // Bump this number whenever you update assets/schedule.db
-const DB_ASSET_VERSION = 1;
+const DB_ASSET_VERSION = 2;
 
 async function initializeDatabase(db: SQLiteDatabase) {
     const result = await db.getFirstAsync<{ count: number }>(
@@ -134,7 +134,7 @@ export default function App() {
         <Suspense fallback={<ActivityIndicator size="large" />}>
             <SQLiteProvider
                 databaseName={DB_NAME}
-                assetSource={{ assetId: require("./assets/schedule.db") }}
+                assetSource={{ assetId: require("./assets/schedule_lunch.db") }}
                 onInit={initializeDatabase}
             >
                 <View style={styles.container}>
