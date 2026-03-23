@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+        <meta
+            name="viewport"
+            content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1.00001,viewport-fit=cover"
+        />
+
+        <!-- PWA meta tags -->
+        <meta name="theme-color" content="#000000" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta
+            name="apple-mobile-web-app-status-bar-style"
+            content="black-translucent"
+        />
+        <meta name="apple-mobile-web-app-title" content="Countdown" />
+        <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+
+        <!-- Manifest -->
+        <link rel="manifest" href="./manifest.json" />
+
+        <title>Countdown</title>
+    </head>
+    <body style="background-color: black">
+        <div id="root"></div>
+
+        <!-- Register service worker -->
+        <script>
+            if ("serviceWorker" in navigator) {
+                window.addEventListener("load", () => {
+                    navigator.serviceWorker
+                        .register("./sw.js", { scope: "./" })
+                        .then((reg) => console.log("SW registered:", reg.scope))
+                        .catch((err) =>
+                            console.log("SW registration failed:", err),
+                        );
+                });
+            }
+        </script>
+    </body>
+</html>
