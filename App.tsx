@@ -11,7 +11,7 @@ import { LargeText } from "./components/MyAppText";
 
 const DB_NAME = "schedule_lunch.db";
 // Bump this number whenever you update assets/schedule.db
-const DB_ASSET_VERSION = 2;
+const DB_ASSET_VERSION = 3;
 
 async function initializeDatabase(db: SQLiteDatabase) {
     const result = await db.getFirstAsync<{ count: number }>(
